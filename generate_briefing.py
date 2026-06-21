@@ -24,7 +24,7 @@ def chunk_text(text, max_chars=3000):
     return chunks
 
 # ==================== 1. API 配置 ====================
-api_key = "sk-b5c232f28d44473595c7e997c2e0118c"  # 请替换成你自己的密钥，不要提交真实密钥
+api_key = "xxx"  # 请替换成你自己的密钥，不要提交真实密钥
 client = OpenAI(
     api_key=api_key,
     base_url="https://api.deepseek.com"
