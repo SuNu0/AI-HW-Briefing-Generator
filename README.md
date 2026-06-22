@@ -11,7 +11,7 @@
 
 ### 依赖库（已写入 requirements.txt）
 
-
+```bash
 pip install -r requirements.txt
 库	用途
 openai	调用 DeepSeek API
@@ -49,10 +49,10 @@ python generate_briefing.py
 
 优势：相比全量输入（12 万字），节省约 50% 以上的 Token 消耗。
 
-优势：确保 AI 提取的信息直接基于原文，避免“凭空捏造”。
+优势：确保 AI 提取的信息直接基于原文，避免"凭空捏造"。
 
 4.2 Prompt 工程
-我在系统提示词中赋予 AI “资深技术分析师”的角色，并在用户提示词中：
+我在系统提示词中赋予 AI "资深技术分析师"的角色，并在用户提示词中：
 
 明确要求输出 JSON 格式，并给出精确的字段样例。
 
