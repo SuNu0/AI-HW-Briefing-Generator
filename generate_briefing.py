@@ -24,7 +24,15 @@ def chunk_text(text, max_chars=3000):
     return chunks
 
 # ==================== 1. API 配置 ====================
-api_key = "xxx"  # 请替换成你自己的密钥，不要提交真实密钥
+from dotenv import load_dotenv
+import os
+from openai import OpenAI   # 确保这行在文件顶部已经有了
+
+load_dotenv()
+api_key = os.getenv("DEEPSEEK_API_KEY")
+if not api_key:
+    raise ValueError("请在 .env 文件中设置 DEEPSEEK_API_KEY")
+
 client = OpenAI(
     api_key=api_key,
     base_url="https://api.deepseek.com"
@@ -49,131 +57,172 @@ def call_ai(user_content, system_content=None):
 
 # ==================== 3. PPT 生成 ====================
 def create_ppt(data):
+
+    # 兜底检查（保护整个函数）
+    if "three_levels" not in data or len(data["three_levels"]) != 3:
+        print("⚠️ 三大层级数据异常，使用默认值")
+        data["three_levels"] = [
+            {"level": "Hardware", "features": "硬件技术层（默认值）"},
+            {"level": "Algorithm", "features": "算法与模型层（默认值）"},
+            {"level": "Application", "features": "应用与社会层（默认值）"}
+        ]
+    if "timeline" not in data:
+        data["timeline"] = {
+            "near_term_2_5_years": ["默认技术1", "默认技术2"],
+            "far_term_6_10_years": ["默认技术3", "默认技术4"]
+        }
+
     prs = Presentation()
     prs.slide_width = Inches(13.333)
     prs.slide_height = Inches(7.5)
 
-    # ===== 幻灯片1：标题页（使用标题布局）=====
-    slide1 = prs.slides.add_slide(prs.slide_layouts[0])
-    title = slide1.shapes.title
-    title.text = data.get("title", "AI+硬件协同设计愿景简报")
-    # 如果有副标题占位符，也可以填充
-    if len(slide1.placeholders) > 1:
-        subtitle = slide1.placeholders[1]
-        subtitle.text = "基于论文：AI+HV2035: Shaping the Next Decade"
+    # =============================================
+    # 第一页：标题 + 核心愿景（完全手动控制）
+    # =============================================
+    slide1 = prs.slides.add_slide(prs.slide_layouts[6])  # 空白布局
 
-    # ===== 幻灯片2：三大层级（卡片式布局）=====
-    slide2 = prs.slides.add_slide(prs.slide_layouts[6])  # 空白布局
+    # 主标题（居中）
+    title_box = slide1.shapes.add_textbox(Inches(1), Inches(0.8), Inches(11.333), Inches(1.2))
+    tf = title_box.text_frame
+    tf.text = data.get("title", "AI+硬件协同设计愿景简报")
+    tf.paragraphs[0].font.size = Pt(40)
+    tf.paragraphs[0].font.bold = True
+    tf.paragraphs[0].alignment = PP_ALIGN.CENTER
 
-    # 页面标题
-    title2 = slide2.shapes.add_textbox(Inches(0.5), Inches(0.3), Inches(12), Inches(0.8))
-    title2.text_frame.text = "三大协同设计层级"
-    title2.text_frame.paragraphs[0].font.size = Pt(32)
-    title2.text_frame.paragraphs[0].font.bold = True
+    # 副标题（居中）
+    sub_box = slide1.shapes.add_textbox(Inches(1), Inches(2.2), Inches(11.333), Inches(0.8))
+    tf = sub_box.text_frame
+    tf.text = "基于论文：AI+HV2035: Shaping the Next Decade (arXiv:2603.05225)"
+    tf.paragraphs[0].font.size = Pt(18)
+    tf.paragraphs[0].font.color.rgb = RGBColor(128, 128, 128)
+    tf.paragraphs[0].alignment = PP_ALIGN.CENTER
 
-    # 检查数据中有没有 three_levels 字段
+    # 核心愿景（居中）
+    core_text = data.get("core_goal", "未提取到核心目标")
+    core_box = slide1.shapes.add_textbox(Inches(1.5), Inches(3.5), Inches(10.333), Inches(2.5))
+    tf = core_box.text_frame
+    tf.word_wrap = True
+    tf.text = f"🎯 核心目标：\n{core_text}"
+    tf.paragraphs[0].font.size = Pt(20)
+    tf.paragraphs[0].font.bold = True
+    tf.paragraphs[0].alignment = PP_ALIGN.CENTER
+    if len(tf.paragraphs) > 1:
+        tf.paragraphs[1].font.size = Pt(18)
+        tf.paragraphs[1].font.bold = False
+        tf.paragraphs[1].alignment = PP_ALIGN.CENTER
+
+    # 底部脚注
+    footer_box = slide1.shapes.add_textbox(Inches(1), Inches(6.8), Inches(11.333), Inches(0.4))
+    tf = footer_box.text_frame
+    tf.text = "AI+硬件协同设计愿景 | 自动化简报生成器"
+    tf.paragraphs[0].font.size = Pt(12)
+    tf.paragraphs[0].font.color.rgb = RGBColor(128, 128, 128)
+    tf.paragraphs[0].alignment = PP_ALIGN.CENTER
+
+    # =============================================
+    # 第二页：三大层级（表格版）
+    # =============================================
+    slide2 = prs.slides.add_slide(prs.slide_layouts[6])
+
+    title2 = slide2.shapes.add_textbox(Inches(0.5), Inches(0.3), Inches(12.333), Inches(0.8))
+    tf = title2.text_frame
+    tf.text = "三大协同设计层级"
+    tf.paragraphs[0].font.size = Pt(32)
+    tf.paragraphs[0].font.bold = True
+    tf.paragraphs[0].alignment = PP_ALIGN.CENTER
+
+    table = slide2.shapes.add_table(4, 2, Inches(1.5), Inches(1.5), Inches(10.333), Inches(4.5)).table
+    table.columns[0].width = Inches(3.5)
+    table.columns[1].width = Inches(6.833)
+
+    # 表头（蓝底白字）
+    for col_idx in range(2):
+        cell = table.cell(0, col_idx)
+        cell.fill.solid()
+        cell.fill.fore_color.rgb = RGBColor(0, 112, 192)
+        cell.text_frame.paragraphs[0].font.color.rgb = RGBColor(255, 255, 255)
+        cell.text_frame.paragraphs[0].font.bold = True
+        cell.text_frame.paragraphs[0].font.size = Pt(18)
+    table.cell(0, 0).text = "抽象层级"
+    table.cell(0, 1).text = "关键特征"
+
     if "three_levels" in data and len(data["three_levels"]) >= 3:
-        levels = data["three_levels"]
-        # 定义三张卡片的位置和颜色
-        cards = [
-            {"x": 0.5, "color": RGBColor(0, 112, 192), "title": "Hardware"},
-            {"x": 4.8, "color": RGBColor(0, 176, 80), "title": "Algorithm"},
-            {"x": 9.1, "color": RGBColor(237, 125, 49), "title": "Application"}
-        ]
-        for i, card in enumerate(cards):
-            # 画卡片背景（圆角矩形）
-            shape = slide2.shapes.add_shape(
-                1,  # 矩形
-                Inches(card["x"]), Inches(1.5),
-                Inches(3.8), Inches(3.5)
-            )
-            shape.fill.solid()
-            shape.fill.fore_color.rgb = card["color"]
-            shape.line.color.rgb = card["color"]
-
-            # 层级名称（白色大号居中）
-            name_box = slide2.shapes.add_textbox(
-                Inches(card["x"] + 0.2), Inches(1.7),
-                Inches(3.4), Inches(0.7)
-            )
-            name_box.text_frame.text = card["title"]
-            name_box.text_frame.paragraphs[0].font.size = Pt(24)
-            name_box.text_frame.paragraphs[0].font.bold = True
-            name_box.text_frame.paragraphs[0].font.color.rgb = RGBColor(255, 255, 255)
-            name_box.text_frame.paragraphs[0].alignment = PP_ALIGN.CENTER
-
-            # 特征描述（白色，项目符号）
-            feature_text = levels[i].get("features", "")
-            # 尝试把中文逗号变成换行
-            feature_items = [item.strip() for item in feature_text.replace("，", ",").split(",")]
-
-            feature_box = slide2.shapes.add_textbox(
-                Inches(card["x"] + 0.3), Inches(2.6),
-                Inches(3.2), Inches(2.2)
-            )
-            tf = feature_box.text_frame
-            tf.word_wrap = True
-            tf.clear()
-            for idx, item in enumerate(feature_items[:4]):  # 最多显示4条
-                p = tf.add_paragraph() if idx > 0 else tf.paragraphs[0]
-                p.text = f"• {item}"
-                p.font.size = Pt(14)
-                p.font.color.rgb = RGBColor(255, 255, 255)
-                p.space_after = Pt(6)
+        for i, level_info in enumerate(data["three_levels"], start=1):
+            table.cell(i, 0).text = level_info.get("level", f"层级{i}")
+            table.cell(i, 1).text = level_info.get("features", "")
+            for col_idx in range(2):
+                cell = table.cell(i, col_idx)
+                cell.fill.solid()
+                cell.fill.fore_color.rgb = RGBColor(240, 240, 240)
+                cell.text_frame.paragraphs[0].font.size = Pt(16)
     else:
-        # 如果没有 three_levels，显示提示
-        fallback_box = slide2.shapes.add_textbox(Inches(1), Inches(2), Inches(10), Inches(2))
-        fallback_box.text_frame.text = "未提取到三大层级数据，请检查论文内容或提示词。"
-        fallback_box.text_frame.paragraphs[0].font.size = Pt(20)
+        table.cell(1, 0).text = "未提取到数据"
+        table.cell(1, 1).text = "请检查论文内容或提示词"
 
-    # ===== 幻灯片3：时间轴 =====
+    # =============================================
+    # 第三页：时间轴（干净版本，无多余元素）
+    # =============================================
     slide3 = prs.slides.add_slide(prs.slide_layouts[6])
-    title3 = slide3.shapes.add_textbox(Inches(0.5), Inches(0.3), Inches(12), Inches(0.8))
-    title3.text_frame.text = "技术发展时间轴"
-    title3.text_frame.paragraphs[0].font.size = Pt(32)
-    title3.text_frame.paragraphs[0].font.bold = True
+
+    title3 = slide3.shapes.add_textbox(Inches(0.5), Inches(0.3), Inches(12.333), Inches(0.8))
+    tf = title3.text_frame
+    tf.text = "技术发展时间轴"
+    tf.paragraphs[0].font.size = Pt(32)
+    tf.paragraphs[0].font.bold = True
+    tf.paragraphs[0].alignment = PP_ALIGN.CENTER
 
     # 近期（左）
-    near_box = slide3.shapes.add_textbox(Inches(0.5), Inches(1.5), Inches(5.5), Inches(4))
+    near_box = slide3.shapes.add_textbox(Inches(0.8), Inches(1.8), Inches(4.5), Inches(4.0))
     tf = near_box.text_frame
     tf.clear()
     p = tf.paragraphs[0]
-    p.text = "近期（2-5年）"
-    p.font.size = Pt(24)
+    p.text = "📌 近期（2-5年）"
+    p.font.size = Pt(22)
     p.font.bold = True
     p.font.color.rgb = RGBColor(0, 112, 192)
     for item in data.get("timeline", {}).get("near_term_2_5_years", []):
         p = tf.add_paragraph()
-        p.text = f"• {item}"
-        p.font.size = Pt(18)
-        p.level = 1
+        p.text = f"  • {item}"
+        p.font.size = Pt(16)
         p.space_after = Pt(8)
 
-    # 中间箭头（指向未来）
-    arrow = slide3.shapes.add_shape(
-        13,  # 右箭头
-        Inches(6.2), Inches(3.0),
-        Inches(0.8), Inches(0.4)
-    )
-    arrow.fill.solid()
-    arrow.fill.fore_color.rgb = RGBColor(192, 0, 0)
-    arrow.line.color.rgb = RGBColor(192, 0, 0)
+    # 中间分隔线（代替圆柱）
+    line = slide3.shapes.add_shape(1, Inches(5.8), Inches(2.0), Inches(0.04), Inches(3.5))
+    line.fill.solid()
+    line.fill.fore_color.rgb = RGBColor(200, 200, 200)
+    line.line.color.rgb = RGBColor(200, 200, 200)
 
     # 远期（右）
-    far_box = slide3.shapes.add_textbox(Inches(7.5), Inches(1.5), Inches(5.5), Inches(4))
+    far_box = slide3.shapes.add_textbox(Inches(7.0), Inches(1.8), Inches(4.5), Inches(4.0))
     tf = far_box.text_frame
     tf.clear()
     p = tf.paragraphs[0]
-    p.text = "远期（6-10年）"
-    p.font.size = Pt(24)
+    p.text = "🚀 远期（6-10年）"
+    p.font.size = Pt(22)
     p.font.bold = True
     p.font.color.rgb = RGBColor(237, 125, 49)
     for item in data.get("timeline", {}).get("far_term_6_10_years", []):
         p = tf.add_paragraph()
-        p.text = f"• {item}"
-        p.font.size = Pt(18)
-        p.level = 1
+        p.text = f"  • {item}"
+        p.font.size = Pt(16)
         p.space_after = Pt(8)
+
+    # 底部时间轴横线（视觉美化）
+    timeline_line = slide3.shapes.add_shape(1, Inches(0.8), Inches(6.2), Inches(11.733), Inches(0.04))
+    timeline_line.fill.solid()
+    timeline_line.fill.fore_color.rgb = RGBColor(200, 200, 200)
+    timeline_line.line.color.rgb = RGBColor(200, 200, 200)
+
+    # 添加两个时间节点标记
+    left_dot = slide3.shapes.add_shape(1, Inches(0.8), Inches(6.0), Inches(0.3), Inches(0.3))
+    left_dot.fill.solid()
+    left_dot.fill.fore_color.rgb = RGBColor(0, 112, 192)
+    left_dot.line.color.rgb = RGBColor(0, 112, 192)
+
+    right_dot = slide3.shapes.add_shape(1, Inches(12.2), Inches(6.0), Inches(0.3), Inches(0.3))
+    right_dot.fill.solid()
+    right_dot.fill.fore_color.rgb = RGBColor(237, 125, 49)
+    right_dot.line.color.rgb = RGBColor(237, 125, 49)
 
     prs.save("briefing.pptx")
     print("✅ PPT 已生成：briefing.pptx")
@@ -187,11 +236,21 @@ if __name__ == "__main__":
     full_text = read_pdf("paper.pdf")
     print(f"读到了 {len(full_text)} 字符")
 
-    # 2. 分块并合并前两块（确保覆盖2.2节）
-    chunks = chunk_text(full_text, max_chars=3000)
-    # 取前两块合并，约6000字符（足够包含摘要 + 2.2节开头）
-    first_part = chunks[0] + "\n" + (chunks[1] if len(chunks) > 1 else "")
-    print(f"喂给AI的文本长度：{len(first_part)} 字符")
+    # 2. 智能定位论文核心章节（精度优化）
+    keyword = "2.2"  # 论文第 2.2 节（三大层级的定义处）
+    index = full_text.find(keyword)
+    if index != -1:
+        # 找到了！只取关键词前后共 3000 字符，精准且省 Token
+        start = max(0, index - 500)
+        end = min(len(full_text), index + 4000)
+        first_part = full_text[start:end]
+        print(f"✅ 已精准定位到 2.2 章节，截取长度：{len(first_part)} 字符")
+    else:
+        # 万一没找到（兜底方案），退回原来的分块策略
+        print("⚠️ 未找到 2.2 关键词，使用兜底分块方案")
+        chunks = chunk_text(full_text, max_chars=3000)
+        first_part = chunks[0] + "\n" + (chunks[1] if len(chunks) > 1 else "")
+        print(f"喂给AI的文本长度：{len(first_part)} 字符")
 
     # 3. 构造prompt
     prompt = f"""
