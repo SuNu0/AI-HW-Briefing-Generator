@@ -11,7 +11,7 @@
 
 ### 依赖库（已写入 requirements.txt）
 
-```bash
+
 pip install -r requirements.txt
 库	用途
 openai	调用 DeepSeek API
@@ -86,6 +86,6 @@ text
 7. 致谢
 本项目基于论文 AI+HV2035: Shaping the Next Decade（arXiv:2603.05225），使用 DeepSeek API 实现信息提取，并通过 python-pptx 实现自动化简报生成。
 
-作者：陈子涵
-学号：3125009403
+作者：[你的姓名]
+学号：[你的学号]
 提交日期：2026年6月
